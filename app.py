@@ -1,8 +1,10 @@
 import os
-from flask import Flask, request, render_template, flash, redirect, url_for, send_from_directory
+from flask import Flask, request, render_template, flash, redirect, url_for, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 import geocoder
 import config
+import uuid
+import pandas as pd
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = config.UPLOAD_FOLDER
@@ -20,6 +22,12 @@ def upload_file():
             flash('No file part')
             return redirect(request.url)
         file = request.files['file']
+        # google = request.form.getlist('google')[0]
+        # baidu =
+        # bing =
+        # canadapost =
+        # mapquest =
+        #
         # if user does not select file, browser also
         # submit a empty part without filename
         if file.filename == '':
@@ -27,6 +35,7 @@ def upload_file():
             return redirect(request.url)
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
+            filename = '%s___%s' % (filename, uuid.uuid4())
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return redirect(url_for('uploaded_file',
                                     filename=filename))
@@ -35,13 +44,15 @@ def upload_file():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-
-    return send_from_directory(app.config['UPLOAD_FOLDER'],
-                               filename)
+    df = pd.read_csv(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    saved_column = df.ADDRESS
+    addresses = []
+    for i in saved_column:
+        g = geocoder.yahoo(i)
+        print(g)
+        addresses.append([i, g])
+    return jsonify(addresses)
 
 
 if __name__ == "__main__":
     app.run(debug=True)
-#
-# g = geocoder.google('PRICE RD, Eau Claire, WI')
-# print(g.latlng)
